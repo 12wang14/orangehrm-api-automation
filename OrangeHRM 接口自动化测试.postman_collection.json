@@ -1,0 +1,410 @@
+{
+  "info": {
+    "_postman_id": "dc16324b-1306-4770-8981-ede4b155dad8",
+    "name": "OrangeHRM 接口自动化测试",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "53857660",
+    "_collection_link": "https://go.postman.co/collection/53857660-dc16324b-1306-4770-8981-ede4b155dad8?source=collection_link"
+  },
+  "item": [
+    {
+      "name": "错误密码登录",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"错误密码未进入Dashboard\", function () {",
+              "    // 登录失败时 breadcrumb 中不会出现 Dashboard moduleName",
+              "    const body = pm.response.text();",
+              "    const match = body.match(/breadcrumb=\".*?moduleName.*?:(.*?)&quot;/);",
+              "    if (match) {",
+              "        pm.expect(match[1]).to.not.include(\"Dashboard\");",
+              "    } else {",
+              "        // 没有 breadcrumb 说明未登录，测试通过",
+              "        pm.expect(true).to.be.true;",
+              "    }",
+              "});",
+              "",
+              "pm.test(\"服务器正常返回\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "// Step 1: Logout first to clear any existing session",
+              "const baseUrl = pm.environment.get(\"base_url\");",
+              "",
+              "pm.sendRequest({",
+              "    url: baseUrl + \"/web/index.php/auth/logout\",",
+              "    method: \"GET\"",
+              "}, function (error, logoutResponse) {",
+              "    if (error) {",
+              "        console.log(\"Logout error: \" + error);",
+              "    } else {",
+              "        console.log(\"Logout done, status: \" + logoutResponse.status);",
+              "    }",
+              "",
+              "    // Step 2: Fetch login page to get CSRF token",
+              "    pm.sendRequest({",
+              "        url: baseUrl + \"/web/index.php/auth/login\",",
+              "        method: \"GET\"",
+              "    }, function (error2, response) {",
+              "        if (error2) {",
+              "            console.log(error2);",
+              "            return;",
+              "        }",
+              "",
+              "        const html = response.text();",
+              "        const result = html.match(/:token=\"&quot;(.*?)&quot;\"/);",
+              "",
+              "        if (result) {",
+              "            pm.environment.set(\"csrf_token\", result[1]);",
+              "            console.log(\"CSRF Token 获取成功\");",
+              "        } else {",
+              "            console.log(\"没有找到 CSRF Token\");",
+              "        }",
+              "    });",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "_token",
+              "value": "{{csrf_token}}"
+            },
+            {
+              "key": "username",
+              "value": "{{username}}"
+            },
+            {
+              "key": "password",
+              "value": "wrong_password"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/web/index.php/auth/validate",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "web",
+            "index.php",
+            "auth",
+            "validate"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "登录",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"状态码为200\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.test(\"响应时间小于3秒\", function () {",
+              "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+              "});",
+              "",
+              "pm.test(\"登录成功\", function () {",
+              "    const body = pm.response.text();",
+              "    pm.expect(body).to.not.include(\"invalid_credentials\");",
+              "    pm.expect(body).to.not.include(\"auth-login\");",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        },
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "const loginPageUrl = pm.environment.get(\"base_url\") + \"/web/index.php/auth/login\";",
+              "",
+              "pm.sendRequest({",
+              "    url: loginPageUrl,",
+              "    method: \"GET\"",
+              "}, function (error, response) {",
+              "    if (error) {",
+              "        console.log(\"获取登录页失败: \" + error);",
+              "        return;",
+              "    }",
+              "",
+              "    const html = response.text();",
+              "    const result = html.match(/:token=\"&quot;(.*?)&quot;\"/);",
+              "",
+              "    if (result) {",
+              "        pm.environment.set(\"csrf_token\", result[1]);",
+              "        console.log(\"CSRF Token 获取成功\");",
+              "    } else {",
+              "        console.log(\"没有找到 CSRF Token\");",
+              "    }",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "urlencoded",
+          "urlencoded": [
+            {
+              "key": "_token",
+              "value": "{{csrf_token}}"
+            },
+            {
+              "key": "username",
+              "value": "{{username}}"
+            },
+            {
+              "key": "password",
+              "value": "{{password}}"
+            }
+          ]
+        },
+        "url": {
+          "raw": "{{base_url}}/web/index.php/auth/validate",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "web",
+            "index.php",
+            "auth",
+            "validate"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "员工查询",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"员工查询状态码为200\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "const response = pm.response.json();\r",
+              "\r",
+              "pm.test(\"响应包含data字段\", function () {\r",
+              "    pm.expect(response).to.have.property(\"data\");\r",
+              "});\r",
+              "\r",
+              "pm.test(\"data是数组\", function () {\r",
+              "    pm.expect(response.data).to.be.an(\"array\");\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{my_token}}"
+          }
+        ],
+        "url": {
+          "raw": "{{base_url}}/web/index.php/api/v2/pim/employees?limit=50&offset=0&model=detailed&includeEmployees=onlyCurrent&sortField=employee.firstName&sortOrder=ASC",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "web",
+            "index.php",
+            "api",
+            "v2",
+            "pim",
+            "employees"
+          ],
+          "query": [
+            {
+              "key": "limit",
+              "value": "50"
+            },
+            {
+              "key": "offset",
+              "value": "0"
+            },
+            {
+              "key": "model",
+              "value": "detailed"
+            },
+            {
+              "key": "includeEmployees",
+              "value": "onlyCurrent"
+            },
+            {
+              "key": "sortField",
+              "value": "employee.firstName"
+            },
+            {
+              "key": "sortOrder",
+              "value": "ASC"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "新增员工",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"新增员工成功\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.response.to.be.json;\r",
+              "\r",
+              "const response = pm.response.json();\r",
+              "const employee = response.data;\r",
+              "\r",
+              "pm.test(\"返回员工编号\", function () {\r",
+              "    pm.expect(employee.empNumber).to.be.a(\"number\");\r",
+              "});\r",
+              "\r",
+              "pm.test(\"员工姓名正确\", function () {\r",
+              "    pm.expect(employee.firstName).to.eql(\"Test\");\r",
+              "    pm.expect(employee.middleName).to.eql(\"Api\");\r",
+              "    pm.expect(employee.lastName).to.eql(\"User\");\r",
+              "});\r",
+              "\r",
+              "// 保存员工编号，供后续查询或删除使用\r",
+              "pm.environment.set(\"emp_number\", employee.empNumber);"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n//   \"employeeId\": \"0599\",\r\n  \"firstName\": \"Test\",\r\n  \"middleName\": \"Api\",\r\n  \"lastName\": \"User\",\r\n  \"empPicture\": null\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{base_url}}/web/index.php/api/v2/pim/employees",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "web",
+            "index.php",
+            "api",
+            "v2",
+            "pim",
+            "employees"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "员工详情查询",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"员工详情查询成功\", function () {\r",
+              "    pm.response.to.have.status(200);\r",
+              "});\r",
+              "\r",
+              "pm.test(\"响应格式为JSON\", function () {\r",
+              "    pm.response.to.be.json;\r",
+              "});\r",
+              "\r",
+              "const response = pm.response.json();\r",
+              "\r",
+              "pm.test(\"包含员工数据\", function () {\r",
+              "    pm.expect(response).to.have.property(\"data\");\r",
+              "});\r",
+              "\r",
+              "pm.test(\"员工编号正确\", function () {\r",
+              "    pm.expect(String(response.data.empNumber))\r",
+              "        .to.eql(String(pm.environment.get(\"emp_number\")));\r",
+              "});"
+            ],
+            "type": "text/javascript",
+            "packages": {},
+            "requests": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/web/index.php/api/v2/pim/employees/{{emp_number}}",
+          "host": [
+            "{{base_url}}"
+          ],
+          "path": [
+            "web",
+            "index.php",
+            "api",
+            "v2",
+            "pim",
+            "employees",
+            "{{emp_number}}"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}
