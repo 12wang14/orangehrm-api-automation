@@ -1,4 +1,4 @@
-# -postman-
+# orangehrm-api-automation
 OrangeHRM API testing project based on Postman
 # OrangeHRM Postman API Test Project
 
